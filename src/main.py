@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
-import uvicorn
+# import uvicorn
 
-from xxx import models, schemas
+from helpers import response
+from models import models, schemas
 from resources import user as user_crud
 from database.db import SessionLocal, engine
 from helpers.error_response import custom_error_response
@@ -64,12 +65,15 @@ async def exception_handler(request, exc):
         error=error,
     )
 
-@app.get("/users/", response_model=schemas.ResponseBase[list[schemas.User]])
+# @app.get("/users/", response_model=schemas.ResponseBase[list[schemas.User]])
+@app.get("/users/")
 def get_users(skip:int = 0, limit:int = 0, db:Session = Depends(get_db)):
     users = user_crud.get_users(db, skip=skip, limit=limit)
-    return schemas.ResponseBase.success(message="Users succesfully retrieved", data=users)
+    return response.success_response(message="Users succesfully retrieved", data=users, status_code=200)
+    # return schemas.ResponseBase.success(message="Users succesfully retrieved", data=users)
 
-@app.post("/users/", response_model=schemas.User, status_code=201)
+# @app.post("/users/", response_model=schemas.User, status_code=201)
+@app.post("/users/", status_code=201)
 def post_user(user: Annotated[schemas.UserCreate, Form()], db: Session = Depends(get_db)):
     db_user = user_crud.get_user_by_email(db, email=user.email)
     if db_user:
