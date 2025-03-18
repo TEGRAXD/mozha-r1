@@ -10,14 +10,9 @@ Mozha-R1 is an AI-powered application utilizing DeepSeek R1 Distill Model. This 
 - Ollama
 - Python 3.10.11 or higher
 
-# Run
-```
-uvicorn app.main:app --reload
-```
-
 # Contributor
 ```
-TEGRAXD - Tegar B. Suganda
+TEGRAXD
 ```
 
 # License

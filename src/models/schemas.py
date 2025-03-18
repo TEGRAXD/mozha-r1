@@ -1,27 +1,28 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional
+from typing import Generic, Optional, TypeVar, Union
 import uuid
 
-# T = TypeVar("T")
+T = TypeVar("T")
 
-# class ResponseBase(BaseModel, Generic[T]):
-#     status: str
-#     message: str
-#     data: Optional[T] = None
-#     # error: Optional[Dict[str, Any]] = Field(default=None, exclude_none=True)
+class SuccessResponse(BaseModel, Generic[T]):
+    status: str
+    message: str
+    data: Optional[T] = None
 
-#     # class Config:
-#     #     json_encoders = {Dict: lambda v: v if v is not None else {}}
-#         # exclude_none = True
+    @classmethod
+    def success(cls, message: str, data: Optional[T] = None):
+        return cls(status="success", message=message, data=data)
 
-#     @classmethod
-#     def success(cls, message: str, data: Optional[T] = None):
-#         return cls(status="success", message=message, data=data)
+class Error(BaseModel):
+    loc: Optional[list[Union[str, int]]]
+    msg: str
+    type: Optional[str] = None
 
-#     # @classmethod
-#     # def error(cls, message: str, error: Optional[Dict[str, Any]] = None):
-#     #     return cls(status="error", message=message, error=error)
+class ErrorResponse(BaseModel):
+    status: str
+    message: str
+    error: list[Error]
 
 class UserBase(BaseModel):
     username: str
