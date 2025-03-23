@@ -4,13 +4,19 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import Annotated
 import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
+from src.database.db import engine, get_db
 from src.models import models, schemas
-from src.resources import user as user_crud
-from src.database.db import SessionLocal, engine
+from src.resources import user_crud, permission_crud
+from resources.seeder import seed_crud
+from helpers.error_response import error_response_models
+from src.routers import seed, permission, user
 
 prod_mode = os.getenv("PROD_MODE").lower() == "true"
 
+# models.Base.metadata.drop_all(bind=engine)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -19,21 +25,34 @@ app = FastAPI(
     version="1.0.0",
 )
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+routers = [
+    seed.router,
+    permission.router,
+    user.router,
+]
+
+for router in routers:
+    app.include_router(router)
 
 @app.get("/", response_model=schemas.SuccessResponse[dict[str, str]])
 async def root():
     return schemas.SuccessResponse.success("Welcome to Mozha-R1 API", {"version": "1.0.0", "created_by": "TEGRAXD"})
 
+@app.exception_handler(404)
+async def not_found_exception_handler(_: Request, exc: Exception):
+    return JSONResponse(
+        status_code=404,
+        content=schemas.ErrorResponse(
+            status="error",
+            message="Not found",
+            error=[schemas.Error(msg="Resource not found", loc=None)],
+        ).model_dump(),
+    )
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
     return JSONResponse(
-        status_code=exc.status_code,
+        status_code=422,
         content=schemas.ErrorResponse(
             status="error",
             message="Validation failed",
@@ -62,22 +81,3 @@ async def exception_handler(_: Request, exc: Exception):
             error=[schemas.Error(msg=str(exc), loc=None)],
         ).model_dump(),
     )
-
-@app.get("/users/",
-         response_model=schemas.SuccessResponse[list[schemas.User]],
-         responses={
-             400: {"model": schemas.ErrorResponse},
-             422: {"model": schemas.ErrorResponse},
-             500: {"model": schemas.ErrorResponse},
-             },
-        )
-def get_users(skip:int = 0, limit:int = 0, db:Session = Depends(get_db)):
-    users = user_crud.get_users(db, skip=skip, limit=limit)
-    return schemas.SuccessResponse.success("Users retrieved successfully", users)
-
-@app.post("/users/", response_model=schemas.User, status_code=201)
-def post_user(user: Annotated[schemas.UserCreate, Form()], db: Session = Depends(get_db)):
-    db_user = user_crud.get_user_by_email(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return user_crud.create_user(db, user)
